@@ -1,6 +1,9 @@
 %% Measure Colony Sizes
 %  Matlab Colony Analyzer Toolkit
 %  Gordon Bean, December 2012
+%  Erica Silva, February 2019
+    % Added section concerning grid window so that a specified grid window
+    % can be used in all future steps
 %
 % Measures the sizes of colonies in the image.
 % First argument may be the image data or a file name.
@@ -104,7 +107,12 @@ function [sizes, grid] = measure_colony_sizes( plate_, varargin )
     
     grid.info.PlateLoader = params.plateloader;
     
-    %% Intensity Threshold
+    %% Set Window % Added by Erica Silva 
+    if isnumeric(params.threshold.windowscale) 
+        grid.win = round(grid.win * params.threshold.windowscale);
+    end
+    
+    %% Intensity Threshold 
     if (~isfield(grid, 'thresh'))
         grid.thresh = params.threshold.apply_threshold(plate, grid);
         grid.info.Threshold = params.threshold;

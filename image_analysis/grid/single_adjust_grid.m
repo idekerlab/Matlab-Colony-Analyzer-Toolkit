@@ -23,7 +23,7 @@
 %  grid to the image.
 %
 
-function grid = adjust_grid( plate, grid, varargin )
+function grid = single_adjust_grid( plate, grid, varargin )
     params = default_param( varargin, ...
         'method', 'linear', ...
         'adjustmentWindow', round(grid.dims(1)/8), ...
@@ -66,7 +66,7 @@ function grid = adjust_grid( plate, grid, varargin )
         end
 
         %% Plate-wide adjustment
-        % Gordon Bean
+        % Use coordinates across the full grid
         for iter = 1 : params.numfulladjusts
             rrr = round( linspace( 1, grid.dims(1), 8 ) );
             ccc = round( linspace( 1, grid.dims(2), 12 ) );
@@ -77,36 +77,6 @@ function grid = adjust_grid( plate, grid, varargin )
                 ( plate, grid, inds );
         
         end
-        
-        % Erica Silva- Good for crooked pinned plates, adjusts each colony
-        % idependently
-        % Use coordinates across the full grid
-%         for iter = 1 : params.numfulladjusts
-% 
-%             % Changed by ES to iterate over every colony on plate
-%             rrr = 1: grid.dims(1);
-%             ccc = 1: grid.dims(2);
-%             [cfoo, rfoo] = meshgrid(ccc, rrr);
-%             inds = sub2ind(grid.dims, rfoo, cfoo);
-%             [rtmp ctmp] = deal( nan(size(grid.r)) );
-% 
-%             % Find true colony locations
-%             for ii = inds(:)'
-%                 [rtmp(ii), ctmp(ii)] = adjust_spot ...
-%                     ( plate, grid.r(ii), grid.c(ii), grid.win);
-%             end
-%             
-%             inds = sub2ind(grid.dims, rfoo, cfoo);
-% 
-%             grid = methods.(lower(params.method))...
-%                 ( plate, grid, inds );
-%             
-%             % Update grid positions
-%             grid.r(~isnan(rtmp)) = rtmp(~isnan(rtmp));
-%             grid.c(~isnan(ctmp)) = ctmp(~isnan(ctmp));
-%             
-%         
-%         end
     end
     
     %% Add meta-data

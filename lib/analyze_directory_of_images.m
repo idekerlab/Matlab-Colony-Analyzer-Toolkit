@@ -10,7 +10,7 @@
 %  - if true, the filename is printed as the file is processed
 % parallel <false>
 %  - if true, uses matlabpool to process directory on multiple cores
-%
+%z
 % All parameters are passed to analyze_image.
 %
 % See also matlab_colony_analyzer_tutorial, full_analysis_workflow_tutorial
@@ -42,13 +42,13 @@ function analyze_directory_of_images( imagedir, varargin )
     
     %% Scan each file
     if (params.parallel)
-        if (matlabpool('size') == 0)
-            matlabpool
-        end
+%         if (parpool('size') == 0)
+%             parpool
+%         end
         verb = params.verbose;
         parfor ff = 1 : length(files)
             try
-                verbose( verb, ' Analyzing: %s\n', files{ff});
+                verbose( verb, ' Analyzing: %s %s\n', files{ff}, params.plate_ext);
                 analyze_image( files{ff}, varargin{:} );
             catch e
                 warning('\nImage %s failed: \n%s\n\n', ...

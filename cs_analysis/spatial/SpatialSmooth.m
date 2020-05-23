@@ -1,26 +1,25 @@
-%% Spatial Median - a colony size spatial correction
+%% Spatial Smooth - a colony size spatial correction
 % Matlab Colony Analyzer Toolkit
-% Gordon Bean, July 2013
-% Erica Silva, May 2019
+%  Erica Silva, July 2019
 % 
 % Syntax
-% SM = SpatialMedian();
-% SM = SpatialMedian('Name', Value, ...);
-% spatial = SM(plate);
-% spatial = SpatialMedian(...).filter(plate);
+% SM = SpatialSmooth();
+% SM = SpatialSmooth('Name', Value, ...);
+% spatial = SS(plate);
+% spatial = SpatialSmooth(...).filter(plate);
 %
 % Description
-% SM = SpatialMedian() returns a SpatialMedian object with the default
+% SM = SpatialSmooth() returns a SpatialSmooth object with the default
 % parameters. This object can be used as a regular object (SPATIAL =
 % SM.filter(PLATE)) or like a function handle (SPATIAL = SM(PLATE)). 
 % 
-% PLATE should be a 2D matrix. If PLATE is a vector, SpatialMedian will
+% PLATE should be a 2D matrix. If PLATE is a vector, SpatialSmooth will
 % attempt to reshape it into a standard microbial assay format (96-, 384-,
 % 1536-, 6144-, etc., well format) and will throw an error if it fails. If
 % PLATE is already 2D, no reshaping is done, and it does not have to have
 % standard dimensions.
 %
-% SM = SpatialMedian('Name, Value, ...) accepts parameter name-value pairs
+% SM = SpatialSmooth('Name, Value, ...) accepts parameter name-value pairs
 % from the following list (defaults in {}):
 %  'WindowSize' {9} - a scalar or 2-element vector indicating the diameter 
 %  or dimensions of the 2D sliding window (see Algorithms). The window is 
@@ -33,7 +32,7 @@
 %  window of the specified dimensions. This value is ignored if 'Window' is
 %  specified.
 %
-%  'WindowFUn' {@nanmedian} - a function handle that is called on the
+%  'WindowFUn' {@nanSmooth} - a function handle that is called on the
 %  values of each 2D window.
 %
 %  'Window' - a 2D binary matrix that is used as the sliding window. If not
@@ -41,27 +40,27 @@
 %  'WindowShape' and 'WindowSize'. 
 %
 %  'AcceptZeros' {false} - when regions of the plate have many zeros, the
-%  median may be zero, which may result in division by zero and NaN and Inf
+%  Smooth may be zero, which may result in division by zero and NaN and Inf
 %  values. If false, then background values of zero are replaced by the
-%  closest non-zero value to the median in that window. If true, nothing is
+%  closest non-zero value to the Smooth in that window. If true, nothing is
 %  done to correct zero-values. Note that when there are not values other
 %  than zero within a window, acceptZeros == false will result in NaN 
 %  values in those positions.
 %  
 %  'FilterZeros' {false} - when regions of the plate have many zeros, the
-%  median may be zero, and the acceptzeros flag may create artifacts of
+%  Smooth may be zero, and the acceptzeros flag may create artifacts of
 %  local background by selecting the minimum value in that area. If this
 %  occurs, the user may choose to filter out all zeros prior to processing
 %  the plate for spatial artifacts. 
 %
 % Algorithm
-% SpatialMedian estimates the background pixel intensity at each position
+% SpatialSmooth estimates the background pixel intensity at each position
 % by executing 'WindowFun' on the values indicated by the binary matrix
 % 'Window' centered at each position. 
 %
 % See also spatial_correction_tutorial, blockfun
 
-classdef SpatialMedian < Closure
+classdef SpatialSmooth < Closure
     properties
         windowsize
         windowshape
@@ -73,12 +72,12 @@ classdef SpatialMedian < Closure
     end
     
     methods
-        function this = SpatialMedian(varargin)
+        function this = SpatialSmooth(varargin)
             this = this@Closure();
             this = default_param(this, ...
                 'windowSize', 9, ...
                 'windowShape', 'round', ...
-                'windowFun', @nanmedian, ...
+                'windowFun', @(x)imgaussfilt(x), ...
                 'window', nan, ...
                 'acceptZeros', false, ...
                 'filterzeros', false, ...
@@ -114,13 +113,26 @@ classdef SpatialMedian < Closure
                 colsizes = reshape(colsizes, dims);
             end
             
-            % Filter out zeros- useful for sparsely-pinned plates ES
+            % Filter out zeros- useful for sparsely-pinned plates
             if this.filterzeros
                 colsizes = fil(colsizes, @(x) x<=0);
+            end            
+                
+            % Remove outliers (1st and 99th percentiles):
+%             ll = prctile(colsizes(:),0);
+%             ul = prctile(colsizes(:),100);
+%             ol = bsxfun(@gt, colsizes, ul) | bsxfun(@lt, colsizes, ll);
+            colsizes_ = colsizes;
+%             colsizes_(ol) = nan;
+
+            % fill missing values           
+            while any(isnan(colsizes_(:))) & ~all(isnan(colsizes))
+                colsizes_ = (fillmissing(colsizes_, 'movmedian', ...
+                    this.windowsize, 1) + fillmissing(colsizes_, ...
+                    'movmedian', this.windowsize,2))/2;
             end
-                        
-            fit = blockfun( colsizes, this.window, this.windowfun, ...
-                this.blockfunparams{:});
+
+            fit = this.windowfun(colsizes_);
             
             % Correct for zeros in the background
             % Assumes that all values are positive.
